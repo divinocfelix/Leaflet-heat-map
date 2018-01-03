@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" />
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	
+	<script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"></script>
+	<script src='HeatLayer.js' type="text/javascript"></script>
+	<script src='simpleheat.js' type="text/javascript"></script>
+	
+	<script src='precision_4.js' type="text/javascript"></script>
+	<script src='precision_5.js' type="text/javascript"></script>
+	<script src='precision_6.js' type="text/javascript"></script>
+	<script src='precision_7.js' type="text/javascript"></script>
+	<script src='precision_8.js' type="text/javascript"></script>
+	
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      #map {
+		width: 1000px;
+        height: 800px;
+      }
+
+	div {
+		display: block;
+	}
+	
+	h2>a:first-child, .su>a:first-child {
+		margin: 0;
+	}
+	  
+	h2 a:empty, .su a:empty {
+		height: 20px;
+		padding: 6px 6px 6px 26px;
+	}
+
+	h2 a, .su a {
+		line-height: 20px;
+	}
+
+	h2 a, h4 a, .su a, .op a, .rig a {
+		float: left;
+		margin: 0 0 0 2px;
+		padding: 6px 6px 6px 32px;
+		text-decoration: none;
+	}
+
+	.ic, h2 a, h4 a, .su a {
+		border: 1px solid transparent;
+	}
+	
+	.precision{
+		font-size: 20px;
+		margin-left: 10px;
+	}
+	
+	.abs{
+		width: 700px;
+	}
+	
+	button{
+		margin-left: 10px;
+		width: 30px;
+		height: 30px;
+	}
+
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    
+  </body>
+</html>
+
+<script type="text/javascript">
+	var _zoom = 6;
+	var _center = [-19.919216, -43.938768];
+	var _position = 'topleft';
+	var _radius = 15;
+	var _minOpacity = 0.2;
+	var _blur = 20;
+    var _precision = 6;
+	var _mimZoom = 5;
+	var _maxZoom = 18;
+	var _map;
+	var heatmap = null;
+	var precision = 4;
+	var total = 0;
+	
+	init();
+	
+	function init(){
+		//Create map
+		_createMap('map')
+		
+		//Create custom control
+		_createCustomControl();
+		
+		//Create headmap precision 4
+		_recarregarMapa(4);
+	}
+	
+	function _createMap(divMap){
+		const config = {
+            zoom: _zoom,
+            center: _center,
+            minZoom: _mimZoom,
+            maxZoom: _maxZoom,
+            attributionControl: false,
+            trackResize: true,
+            dragging: true,
+            zoomControl: false,
+            scrollWheelZoom: true
+        };
+
+        _map = L.map(divMap, config);
+        _createBaseLayer(_map);
+		
+        return map;
+    };
+	
+	function _createBaseLayer(map){
+        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; Contribuidores do <a href="http://osm.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+    };
+	
+	function _recarregarMapa(precision) {
+        _setPrecision(precision);
+		let dados;
+		
+		switch(precision){
+			case 4 :
+			dados = dados4;
+			break;
+			
+			case 5 :
+			dados = dados5;
+			break;
+			
+			case 6 :
+			dados = dados6;
+			break;
+			
+			case 7 :
+			dados = dados7;
+			break;
+			
+			case 8 :
+			dados = dados8;
+			break;
+		}
+
+        _createHeatLayer(dados, _radius, _maxZoom, _blur, _minOpacity);
+    }
+	
+	function _setPrecision(precision){
+		if(precision >3 && precision < 9){
+			this.precision = precision;
+			self.spanValor.innerHTML = 'Precision : ' + precision;
+		}
+	}
+	
+	function _createCustomControl() {
+		var self = this;
+		
+        var controleUI = L.DomUtil.create('div', 'abs');
+		controleUI.style = "z-index: 0; position: absolute; top: 0px; left: 0px;";
+        controleUI.index = 1;
+
+        var customControl =  L.Control.extend({
+            options: { position: _position },
+            onAdd: function (map) { return controleUI; }
+        });
+
+        _map.addControl(new customControl());
+		
+		
+		self.spanTotal = document.createElement('span');
+        self.spanTotal.style.cursor = 'pointer';
+		self.spanTotal.innerHTML = 'Total de registros : ' + self.total;
+		self.spanTotal.classList.add('precision');
+        controleUI.appendChild(self.spanTotal);
+		
+		self.spanValor = document.createElement('span');
+        self.spanValor.style.cursor = 'pointer';
+		self.spanValor.innerHTML = 'Precision : ' + self.precision;
+		self.spanValor.classList.add('precision');
+        controleUI.appendChild(self.spanValor);
+
+        self.btMenos = document.createElement('button');
+        self.btMenos.classList.add('menos', 'glyphicon', 'glyphicon-minus');
+        self.btMenos.style.cursor = 'pointer';
+        controleUI.appendChild(self.btMenos);
+		
+        self.btMais = document.createElement('button');
+        self.btMais.classList.add('mais', 'glyphicon', 'glyphicon-plus');
+        self.btMais.style.cursor = 'pointer';
+        controleUI.appendChild(self.btMais);
+		
+		btMenos.addEventListener('click', function () {
+			let aux = self.precision;
+            let precision = Math.max(--aux, 4);
+            _recarregarMapa(precision);
+			event.stopPropagation();
+        });
+		
+		btMais.addEventListener('click', function () {
+			let aux = self.precision;
+			let precision = Math.min(++aux, 8);
+            _recarregarMapa(precision);
+			event.stopPropagation();
+        });
+    };
+	
+	function _createHeatLayer(dados, radius, maxZoom, blur, minOpacity) {
+        this.heatmap = null;
+		dados = dados.slice(0, dados.length/3);
+		
+		this.heatmap = L.heatLayer(dados, _createOptionsHeatMap(radius, maxZoom, blur, minOpacity));
+		self.spanTotal.innerHTML = 'Total de registros : ' + dados.length;
+		
+		_removeLayer(_map);
+		this.heatmap.addTo(_map);
+    };
+
+    function _createOptionsHeatMap(raio, maxZoom, blur, minOpacity){
+        return {
+           radius : raio,
+           maxZoom : maxZoom,
+           blur : blur,
+        }
+    }
+	
+	function _removeLayer(map){
+        map.eachLayer(function (layer) {
+            map.removeLayer(layer);
+        });
+
+        _createBaseLayer(map);
+    };
+	
+</script>
